@@ -1,0 +1,132 @@
+version: '3.3'
+
+services:
+
+  traefik:
+    image: "traefik:v2.5"
+    container_name: "rp_traefik"
+    command:
+     #- "--log.level=DEBUG"
+      # Traefik will listen on port 8080 by default for API request.
+      - "--api.insecure=true"
+      # Enabling docker provider
+      - "--providers.docker=true"
+      # Do not expose containers unless explicitly told so
+      - "--providers.docker.exposedbydefault=false"
+      # Traefik will listen to incoming request on the port 80 (HTTP)
+      #- "--entrypoints.web.address=:80" --- removing http
+      # Logs
+      - "--log.filePath=/logs/traefik.log"
+      - "--log.level=DEBUG"
+      - "--accesslog=true"
+      - "--accesslog.filepath=/logs/access.log"
+      ## TLS- BEGIN >>>>>>
+      - "--entrypoints.websecure.address=:443"
+      # Certificate
+      - "--certificatesresolvers.le.acme.email=teatonic@gmail.com"
+      - "--certificatesresolvers.le.acme.storage=/acme.json"
+      - "--certificatesresolvers.le.acme.tlschallenge=true"
+      ## TLS <<<<<<<<< END
+    ports:
+      #- "80:80"--- removing http
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "/data/traefik/logs:/logs"
+      #- "/data/traefik/tls:/tls"
+    restart: unless-stopped
+
+  
+  whoami:
+    # A container that exposes an API to show its IP address
+    image: traefik/whoami
+    container_name: rp_whoami
+    labels:
+      # Explicitly tell Traefik to expose this container
+      - "traefik.enable=true"
+      # The domain the service will respond to
+      #- "traefik.http.routers.whoami.rule=Host(`whoami.samio.live`)"     --- removing http
+      # Allow request only from the predefined entry point named "web"
+      #- "traefik.http.routers.whoami.entrypoints=web"                    --- removing http
+      # TLS
+      - "traefik.http.routers.whoami-secure.tls=true"
+      - "traefik.http.routers.whoami-secure.rule=Host(`whoami.samio.live`)"
+      - "traefik.http.routers.whoami-secure.entrypoints=websecure"
+      - "traefik.http.routers.whoami-secure.tls.certresolver=le"
+
+
+
+      # - "traefik.http.routers.whoami-secure.tls.certresolver=myresolver"
+    restart: unless-stopped
+
+  vscode:
+    image: lscr.io/linuxserver/code-server
+    container_name: rp_vscode
+    labels:
+      # Explicitly tell Traefik to expose this container
+      - "traefik.enable=true"
+      # The domain the service will respond to
+      #- "traefik.http.routers.vscode.rule=Host(`vscode.samio.live`)"         --- removing http
+      # Allow request only from the predefined entry point named "web"
+      #- "traefik.http.routers.vscode.entrypoints=web"                        --- removing http
+      # TLS
+      - "traefik.http.routers.vscode-secure.tls=true"
+      - "traefik.http.routers.vscode-secure.rule=Host(`vscode.samio.live`)"
+      - "traefik.http.routers.vscode-secure.entrypoints=websecure"
+      - "traefik.http.routers.vscode-secure.tls.certresolver=le"
+
+    volumes:
+      # - .vscode/code-server:/root/.config/code-server
+      # - .vscode/extensions:/root/.local/share/code-server/extensions
+      - /home/teatonic/repos:/workspace
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Paris
+      - PASSWORD=${VSCODE_PASS} #optional
+      # - FILE__PASSWORD=/home/teatonic/mysecretpassword
+    user: 0:0 
+    restart: unless-stopped
+
+
+  s_registry:
+    image: registry:2
+    container_name: s_registry
+    ports:
+    - "5000:5000"
+    volumes:
+    - /data/registry:/mnt/registry
+    restart: unless-stopped
+  
+  s_registry_ui:
+    image: konradkleine/docker-registry-frontend:v2
+    container_name: c_registry_ui
+    ports:
+    - "90:80"
+    environment:
+    - ENV_DOCKER_REGISTRY_HOST=registry
+    - ENV_DOCKER_REGISTRY_PORT=5000
+    restart: unless-stopped
+
+  plex:
+    image: lscr.io/linuxserver/plex
+    container_name: rp_plex
+    # network_mode: host
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - VERSION=docker
+      # - PLEX_CLAIM= #optional
+    labels:
+      - "traefik.http.routers.plex-secure.tls=true"
+      - "traefik.http.routers.plex-secure.rule=Host(`plex.samio.live`)"
+      - "traefik.http.routers.plex-secure.entrypoints=websecure"
+      - "traefik.http.routers.plex-secure.tls.certresolver=le"
+      - "traefik.http.middlewares.plex_prefix.addprefix.prefix=/web"
+      # Apply the middleware named `foo-add-prefix` to the router named `router1`
+      - "traefik.http.routers.plex-secure.middlewares=plex_prefix@docker"
+    restart: unless-stopped
+
+
+    
