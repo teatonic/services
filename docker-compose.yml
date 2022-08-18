@@ -108,25 +108,63 @@ services:
     - ENV_DOCKER_REGISTRY_HOST=registry
     - ENV_DOCKER_REGISTRY_PORT=5000
     restart: unless-stopped
-
-  s_plex:
-    image: lscr.io/linuxserver/plex
-    container_name: c_plex
-    # network_mode: host
+  
+  s_piwigo:
+    image: lscr.io/linuxserver/piwigo:latest
+    container_name: c_piwigo
+    environment:
+    - PUID=1000
+    - PGID=1000
+    - TZ=Europe/Paris
+    restart: unless-stopped
+    volumes:
+      - /data/piwigo/config:/config
+      - /data/piwigo/gallery:/gallery
+    labels:
+      # Explicitly tell Traefik to expose this container
+      - "traefik.enable=true"
+      # The domain the service will respond to
+      #- "traefik.http.routers.vscode.rule=Host(`vscode.samio.live`)"         --- removing http
+      # Allow request only from the predefined entry point named "web"
+      #- "traefik.http.routers.vscode.entrypoints=web"                        --- removing http
+      # TLS
+      - "traefik.http.routers.piwigo-secure.tls=true"
+      - "traefik.http.routers.piwigo-secure.rule=Host(`piwigo.samio.live`)"
+      - "traefik.http.routers.piwigo-secure.entrypoints=websecure"
+      - "traefik.http.routers.piwigo-secure.tls.certresolver=le"    
+  
+  s_mariadb:
+    image: lscr.io/linuxserver/mariadb:latest
+    container_name: c_mariadb
     environment:
       - PUID=1000
       - PGID=1000
-      - VERSION=docker
-      # - PLEX_CLAIM= #optional
-    labels:
-      - "traefik.http.routers.plex-secure.tls=true"
-      - "traefik.http.routers.plex-secure.rule=Host(`plex.samio.live`)"
-      - "traefik.http.routers.plex-secure.entrypoints=websecure"
-      - "traefik.http.routers.plex-secure.tls.certresolver=le"
-      - "traefik.http.middlewares.plex_prefix.addprefix.prefix=/web"
-      # Apply the middleware named `foo-add-prefix` to the router named `router1`
-      - "traefik.http.routers.plex-secure.middlewares=plex_prefix@docker"
+      - MYSQL_ROOT_PASSWORD=${MARIADB_PASS}
+      - TZ=Europe/Paris
+    volumes:
+      - /data/mariadb/config:/config
+    ports:
+      - 3306:3306
     restart: unless-stopped
+
+  # s_plex:
+  #   image: lscr.io/linuxserver/plex
+  #   container_name: c_plex
+  #   # network_mode: host
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - VERSION=docker
+  #     # - PLEX_CLAIM= #optional
+  #   labels:
+  #     - "traefik.http.routers.plex-secure.tls=true"
+  #     - "traefik.http.routers.plex-secure.rule=Host(`plex.samio.live`)"
+  #     - "traefik.http.routers.plex-secure.entrypoints=websecure"
+  #     - "traefik.http.routers.plex-secure.tls.certresolver=le"
+  #     - "traefik.http.middlewares.plex_prefix.addprefix.prefix=/web"
+  #     # Apply the middleware named `foo-add-prefix` to the router named `router1`
+  #     - "traefik.http.routers.plex-secure.middlewares=plex_prefix@docker"
+  #   restart: unless-stopped
 
 
     
