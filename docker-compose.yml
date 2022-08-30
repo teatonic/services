@@ -23,9 +23,10 @@ services:
       ## TLS- BEGIN >>>>>>
       - "--entrypoints.websecure.address=:443"
       # Certificate
-      - "--certificatesresolvers.le.acme.email=teatonic@gmail.com"
-      - "--certificatesresolvers.le.acme.storage=/acme.json"
-      - "--certificatesresolvers.le.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=teatonic@gmail.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/acme.json"
+      - "--certificatesresolvers.myresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory" # staging env
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
       ## TLS <<<<<<<<< END
     ports:
       #- "80:80"--- removing http
@@ -34,7 +35,7 @@ services:
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "/data/traefik/logs:/logs"
-      #- "/data/traefik/tls:/tls"
+      - "/data/traefik/tls:/etc/traefik/acme"
     restart: unless-stopped
 
   
@@ -53,7 +54,7 @@ services:
       - "traefik.http.routers.whoami-secure.tls=true"
       - "traefik.http.routers.whoami-secure.rule=Host(`whoami.samio.live`)"
       - "traefik.http.routers.whoami-secure.entrypoints=websecure"
-      - "traefik.http.routers.whoami-secure.tls.certresolver=le"
+      - "traefik.http.routers.whoami-secure.tls.certresolver=myresolver"
 
 
 
@@ -74,7 +75,7 @@ services:
       - "traefik.http.routers.vscode-secure.tls=true"
       - "traefik.http.routers.vscode-secure.rule=Host(`vscode.samio.live`)"
       - "traefik.http.routers.vscode-secure.entrypoints=websecure"
-      - "traefik.http.routers.vscode-secure.tls.certresolver=le"
+      - "traefik.http.routers.vscode-secure.tls.certresolver=myresolver"
 
     volumes:
       # - .vscode/code-server:/root/.config/code-server
@@ -123,7 +124,7 @@ services:
   #     - "traefik.http.routers.plex-secure.tls=true"
   #     - "traefik.http.routers.plex-secure.rule=Host(`plex.samio.live`)"
   #     - "traefik.http.routers.plex-secure.entrypoints=websecure"
-  #     - "traefik.http.routers.plex-secure.tls.certresolver=le"
+  #     - "traefik.http.routers.plex-secure.tls.certresolver=myresolver"
   #     - "traefik.http.middlewares.plex_prefix.addprefix.prefix=/web"
   #     # Apply the middleware named `foo-add-prefix` to the router named `router1`
   #     - "traefik.http.routers.plex-secure.middlewares=plex_prefix@docker"
